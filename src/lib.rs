@@ -1,9 +1,16 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     fmt::{Debug, Display},
+    io::{Result, Write},
+    net::TcpStream,
+    sync::{Arc, Mutex},
 };
 
+pub mod handlers;
 pub mod parse;
+pub mod router;
+
+pub type Data = Arc<Mutex<HashMap<String, Value>>>;
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
@@ -225,4 +232,11 @@ impl Ord for MyFloat {
         }
         self
     }
+}
+
+pub fn send_error(stream: &mut TcpStream, msg: &str) -> Result<()> {
+    let resp = Value::Error(msg.to_string()).to_bytes();
+    stream.write_all(&resp)?;
+    stream.flush()?;
+    Ok(())
 }
