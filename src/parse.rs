@@ -58,7 +58,7 @@ pub fn parse(stream: &mut dyn Read) -> Result<Value, ParseError> {
 pub fn parse_simple_string(stream: &mut dyn Read) -> Result<String, ParseError> {
     let mut ret = Vec::new();
     let mut buf = [1];
-    while let Ok(_) = stream.read(&mut buf) {
+    while stream.read(&mut buf).is_ok() {
         if buf[0] as char == '\r' {
             let _ = stream.read(&mut buf);
             break;
@@ -110,7 +110,7 @@ pub fn parse_bool(stream: &mut dyn Read) -> Result<bool, ParseError> {
         let mut temp_buf = [1];
         let _ = stream.read(&mut temp_buf);
         let _ = stream.read(&mut temp_buf);
-        return if buf[0] == b't' { Ok(true) } else { Ok(false) };
+        if buf[0] == b't' { Ok(true) } else { Ok(false) }
     } else {
         b.map_err(|err| ParseError::BoolParseError(err.to_string()))
             .map(|_| false)
@@ -122,7 +122,7 @@ pub fn parse_double(stream: &mut dyn Read) -> Result<MyFloat, ParseError> {
     f_as_str
         .parse::<f64>()
         .map_err(|err: std::num::ParseFloatError| ParseError::DoubleParseError(err.to_string()))
-        .map(|f| MyFloat::Real(f))
+        .map(MyFloat::Real)
 }
 
 //TODO: create a custom struct to represent a big number

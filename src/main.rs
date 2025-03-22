@@ -43,7 +43,7 @@ fn main() -> Result<()> {
                                 ]
                             {
                                 let resp = prepare_docs();
-                                let _ = stream.write_all(&resp)?;
+                                stream.write_all(&resp)?;
                                 stream.flush()?;
                             } else if arr.starts_with(&[Value::BulkString("get".to_string())]) {
                                 if arr.len() != 2 {
@@ -52,7 +52,7 @@ fn main() -> Result<()> {
                                             .to_string(),
                                     )
                                     .to_bytes();
-                                    let _ = stream.write_all(&resp)?;
+                                    stream.write_all(&resp)?;
                                     stream.flush()?;
                                     continue;
                                 }
@@ -60,7 +60,7 @@ fn main() -> Result<()> {
                                 let lock = data.lock().unwrap();
                                 let value = lock.get(&key);
                                 if let Some(v) = value {
-                                    let _ = stream.write_all(&v.to_bytes())?;
+                                    stream.write_all(&v.to_bytes())?;
                                     stream.flush()?;
                                 } else {
                                     let _ = stream.write_all(&Value::Null(()).to_bytes());
@@ -73,7 +73,7 @@ fn main() -> Result<()> {
                                             .to_string(),
                                     )
                                     .to_bytes();
-                                    let _ = stream.write_all(&resp)?;
+                                    stream.write_all(&resp)?;
                                     stream.flush()?;
                                     continue;
                                 }
@@ -82,7 +82,7 @@ fn main() -> Result<()> {
                                 let mut lock = data.lock().unwrap();
                                 lock.insert(key, val);
                                 let resp = Value::String("OK".to_string()).to_bytes();
-                                let _ = stream.write_all(&resp)?;
+                                stream.write_all(&resp)?;
                                 stream.flush()?;
                             } else if arr.starts_with(&[Value::BulkString("incr".to_string())]) {
                                 if arr.len() != 2 {
@@ -91,7 +91,7 @@ fn main() -> Result<()> {
                                             .to_string(),
                                     )
                                     .to_bytes();
-                                    let _ = stream.write_all(&resp)?;
+                                    stream.write_all(&resp)?;
                                     stream.flush()?;
                                     continue;
                                 }
@@ -102,7 +102,7 @@ fn main() -> Result<()> {
                                     let v = v.to_string().parse::<i64>();
                                     if let Ok(v) = v {
                                         let v = Value::Integer(v + 1);
-                                        let _ = stream.write_all(&v.to_bytes())?;
+                                        stream.write_all(&v.to_bytes())?;
                                         lock.insert(key, Value::BulkString(v.to_string()));
                                         stream.flush()?;
                                     } else {
@@ -111,13 +111,13 @@ fn main() -> Result<()> {
                                                 .to_string(),
                                         )
                                         .to_bytes();
-                                        let _ = stream.write_all(&resp)?;
+                                        stream.write_all(&resp)?;
                                         stream.flush()?;
                                         continue;
                                     }
                                 } else {
                                     let v = Value::Integer(1);
-                                    let _ = stream.write_all(&v.to_bytes())?;
+                                    stream.write_all(&v.to_bytes())?;
                                     lock.insert(key, Value::BulkString(v.to_string()));
                                     stream.flush()?;
                                 }
@@ -128,7 +128,7 @@ fn main() -> Result<()> {
                                             .to_string(),
                                     )
                                     .to_bytes();
-                                    let _ = stream.write_all(&resp)?;
+                                    stream.write_all(&resp)?;
                                     stream.flush()?;
                                     continue;
                                 }
@@ -139,7 +139,7 @@ fn main() -> Result<()> {
                                     let v = v.to_string().parse::<i64>();
                                     if let Ok(v) = v {
                                         let v = Value::Integer(v - 1);
-                                        let _ = stream.write_all(&v.to_bytes())?;
+                                        stream.write_all(&v.to_bytes())?;
                                         lock.insert(key, Value::BulkString(v.to_string()));
                                         stream.flush()?;
                                     } else {
@@ -148,27 +148,27 @@ fn main() -> Result<()> {
                                                 .to_string(),
                                         )
                                         .to_bytes();
-                                        let _ = stream.write_all(&resp)?;
+                                        stream.write_all(&resp)?;
                                         stream.flush()?;
                                         continue;
                                     }
                                 } else {
                                     let v = Value::Integer(-1);
-                                    let _ = stream.write_all(&v.to_bytes())?;
+                                    stream.write_all(&v.to_bytes())?;
                                     lock.insert(key, Value::BulkString(v.to_string()));
                                     stream.flush()?;
                                 }
                             } else {
                                 let resp =
                                     Value::Error("ERR unknown command".to_string()).to_bytes();
-                                let _ = stream.write_all(&resp)?;
+                                stream.write_all(&resp)?;
                                 stream.flush()?;
                                 continue;
                             }
                         }
                         _ => {
                             let resp = Value::Error("ERR unknown command".to_string()).to_bytes();
-                            let _ = stream.write_all(&resp)?;
+                            stream.write_all(&resp)?;
                             stream.flush()?;
                             continue;
                         }

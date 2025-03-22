@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fmt::Debug,
+    fmt::{Debug, Display},
 };
 
 pub mod parse;
@@ -21,9 +21,9 @@ pub struct VerbatimString {
     pub data: String,
 }
 
-impl ToString for VerbatimString {
-    fn to_string(&self) -> String {
-        format!("{}:{}", self.enc, self.data)
+impl Display for VerbatimString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.enc, self.data)
     }
 }
 
@@ -45,9 +45,9 @@ pub enum Value {
     Push(Vec<Value>),
 }
 
-impl ToString for Value {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match self {
             Value::String(s) => s.to_string(),
             Value::Error(s) => s.to_string(),
             Value::Integer(i) => i.to_string(),
@@ -59,7 +59,8 @@ impl ToString for Value {
             Value::BulkError(s) => s.to_string(),
             Value::VerbatimString(s) => s.to_string(),
             _ => "ERROR".to_string(),
-        }
+        };
+        write!(f, "{}", string)
     }
 }
 
@@ -68,33 +69,33 @@ impl Value {
         let mut ret = Vec::new();
         match self {
             Value::String(s) => {
-                ret.push('+' as u8);
+                ret.push(b'+');
                 ret.extend_from_slice(s.as_bytes());
                 ret.extend_from_slice(b"\r\n");
             }
             Value::Error(s) => {
-                ret.push('-' as u8);
+                ret.push(b'-');
                 ret.extend_from_slice(s.as_bytes());
                 ret.extend_from_slice(b"\r\n");
             }
             Value::Integer(i) => {
-                ret.push(':' as u8);
+                ret.push(b':');
                 ret.extend_from_slice(i.to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
             }
             Value::BulkString(s) => {
-                ret.push('$' as u8);
+                ret.push(b'$');
                 ret.extend_from_slice(s.len().to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
                 ret.extend_from_slice(s.as_bytes());
                 ret.extend_from_slice(b"\r\n");
             }
             Value::Array(a) => {
-                ret.push('*' as u8);
+                ret.push(b'*');
                 ret.extend_from_slice(a.len().to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
                 for v in a {
-                    ret.extend_from_slice(&v.to_bytes().as_slice());
+                    ret.extend_from_slice(v.to_bytes().as_slice());
                 }
             }
             //TODO: null BulkString and null Array
@@ -102,33 +103,33 @@ impl Value {
                 ret.extend_from_slice(b"_\r\n");
             }
             Value::Bool(b) => {
-                ret.push('#' as u8);
+                ret.push(b'#');
                 if *b {
-                    ret.push('t' as u8)
+                    ret.push(b't')
                 } else {
-                    ret.push('f' as u8)
+                    ret.push(b'f')
                 }
                 ret.extend_from_slice(b"\r\n");
             }
             Value::Double(d) => {
-                ret.push(',' as u8);
+                ret.push(b',');
                 ret.extend_from_slice(d.to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
             }
             Value::BigNumber(b) => {
-                ret.push('(' as u8);
+                ret.push(b'(');
                 ret.extend_from_slice(b.as_bytes());
                 ret.extend_from_slice(b"\r\n");
             }
             Value::BulkError(e) => {
-                ret.push('!' as u8);
+                ret.push(b'!');
                 ret.extend_from_slice(e.len().to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
                 ret.extend_from_slice(e.as_bytes());
                 ret.extend_from_slice(b"\r\n");
             }
             Value::VerbatimString(s) => {
-                ret.push('=' as u8);
+                ret.push(b'=');
                 let data = s.to_string();
                 ret.extend_from_slice(data.len().to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
@@ -136,7 +137,7 @@ impl Value {
                 ret.extend_from_slice(b"\r\n");
             }
             Value::Map(m) => {
-                ret.push('%' as u8);
+                ret.push(b'%');
                 ret.extend_from_slice(m.len().to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
                 for (k, v) in m.iter() {
@@ -145,7 +146,7 @@ impl Value {
                 }
             }
             Value::Set(s) => {
-                ret.push('~' as u8);
+                ret.push(b'~');
                 ret.extend_from_slice(s.len().to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
                 for v in s.iter() {
@@ -153,11 +154,11 @@ impl Value {
                 }
             }
             Value::Push(p) => {
-                ret.push('>' as u8);
+                ret.push(b'>');
                 ret.extend_from_slice(p.len().to_string().as_bytes());
                 ret.extend_from_slice(b"\r\n");
                 for v in p {
-                    ret.extend_from_slice(&v.to_bytes().as_slice());
+                    ret.extend_from_slice(v.to_bytes().as_slice());
                 }
             }
         }
@@ -171,39 +172,45 @@ pub enum MyFloat {
     NaN,
 }
 
-impl ToString for MyFloat {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Real(f) => f.to_string(),
-            Self::NaN => "0.0".to_string(),
-        }
+impl Display for MyFloat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Real(f) => f.to_string(),
+                Self::NaN => "0.0".to_string(),
+            }
+        )
     }
 }
 
 impl Eq for MyFloat {}
 
+#[allow(clippy::derive_ord_xor_partial_ord)]
 impl Ord for MyFloat {
+    #[allow(clippy::comparison_chain)]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         if self > other {
             return std::cmp::Ordering::Greater;
         } else if self < other {
             return std::cmp::Ordering::Less;
         }
-        return std::cmp::Ordering::Equal;
+        std::cmp::Ordering::Equal
     }
 
     fn max(self, other: Self) -> Self
     where
         Self: Sized,
     {
-        return if self > other { self } else { other };
+        if self > other { self } else { other }
     }
 
     fn min(self, other: Self) -> Self
     where
         Self: Sized,
     {
-        return if self < other { self } else { other };
+        if self < other { self } else { other }
     }
 
     fn clamp(self, min: Self, max: Self) -> Self
@@ -216,6 +223,6 @@ impl Ord for MyFloat {
         } else if self < min {
             return min;
         }
-        return self;
+        self
     }
 }
