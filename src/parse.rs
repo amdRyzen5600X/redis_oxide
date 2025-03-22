@@ -1,23 +1,22 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::Read,
-    net::TcpStream,
 };
 
 use crate::{MyFloat, ParseError, Value, VerbatimString};
 
-pub fn parse(stream: &mut TcpStream) -> Result<Value, ParseError> {
-    let mut buf = [64];
+pub fn parse(stream: &mut dyn Read) -> Result<Value, ParseError> {
+    let mut buf = [1];
     let _ = stream.read(&mut buf);
     let datatype = buf[0] as char;
     match datatype {
         '+' => Ok(Value::String(parse_simple_string(stream)?)),
-        '-' => Ok(Value::String(parse_simple_string(stream)?)),
+        '-' => Ok(Value::Error(parse_simple_string(stream)?)),
         ':' => Ok(Value::Integer(parse_integer(stream)?)),
         '$' => {
             let bstring = parse_bulk_string(stream)?;
             Ok(match bstring {
-                Some(bstring) => Value::String(bstring),
+                Some(bstring) => Value::BulkString(bstring),
                 None => Value::Null(()),
             })
         }
@@ -35,7 +34,7 @@ pub fn parse(stream: &mut TcpStream) -> Result<Value, ParseError> {
         '!' => {
             let bstring = parse_bulk_string(stream)?;
             Ok(match bstring {
-                Some(bstring) => Value::String(bstring),
+                Some(bstring) => Value::BulkError(bstring),
                 None => Value::Null(()),
             })
         }
@@ -56,7 +55,7 @@ pub fn parse(stream: &mut TcpStream) -> Result<Value, ParseError> {
     }
 }
 
-pub fn parse_simple_string(stream: &mut TcpStream) -> Result<String, ParseError> {
+pub fn parse_simple_string(stream: &mut dyn Read) -> Result<String, ParseError> {
     let mut ret = Vec::new();
     let mut buf = [1];
     while let Ok(_) = stream.read(&mut buf) {
@@ -69,14 +68,14 @@ pub fn parse_simple_string(stream: &mut TcpStream) -> Result<String, ParseError>
     String::from_utf8(ret).map_err(|err| ParseError::SimpleStringParseError(err.to_string()))
 }
 
-pub fn parse_integer(stream: &mut TcpStream) -> Result<i64, ParseError> {
+pub fn parse_integer(stream: &mut dyn Read) -> Result<i64, ParseError> {
     let int_as_str = parse_simple_string(stream)?;
     int_as_str
         .parse()
         .map_err(|err: std::num::ParseIntError| ParseError::IntegerParseError(err.to_string()))
 }
 
-pub fn parse_bulk_string(stream: &mut TcpStream) -> Result<Option<String>, ParseError> {
+pub fn parse_bulk_string(stream: &mut dyn Read) -> Result<Option<String>, ParseError> {
     let string_len = parse_integer(stream)?;
     if string_len == -1 {
         return Ok(None);
@@ -85,7 +84,7 @@ pub fn parse_bulk_string(stream: &mut TcpStream) -> Result<Option<String>, Parse
     Ok(Some(string))
 }
 
-pub fn parse_array(stream: &mut TcpStream) -> Result<Option<Vec<Value>>, ParseError> {
+pub fn parse_array(stream: &mut dyn Read) -> Result<Option<Vec<Value>>, ParseError> {
     let n = parse_integer(stream)?;
     if n == -1 {
         return Ok(None);
@@ -97,14 +96,14 @@ pub fn parse_array(stream: &mut TcpStream) -> Result<Option<Vec<Value>>, ParseEr
     Ok(Some(ret))
 }
 
-pub fn parse_null(stream: &mut TcpStream) -> Result<(), ParseError> {
+pub fn parse_null(stream: &mut dyn Read) -> Result<(), ParseError> {
     let mut buf = [1];
     let _ = stream.read(&mut buf);
     let _ = stream.read(&mut buf);
     Ok(())
 }
 
-pub fn parse_bool(stream: &mut TcpStream) -> Result<bool, ParseError> {
+pub fn parse_bool(stream: &mut dyn Read) -> Result<bool, ParseError> {
     let mut buf = [1];
     let b = stream.read(&mut buf);
     if b.is_ok() {
@@ -118,7 +117,7 @@ pub fn parse_bool(stream: &mut TcpStream) -> Result<bool, ParseError> {
     }
 }
 
-pub fn parse_double(stream: &mut TcpStream) -> Result<MyFloat, ParseError> {
+pub fn parse_double(stream: &mut dyn Read) -> Result<MyFloat, ParseError> {
     let f_as_str = parse_simple_string(stream)?;
     f_as_str
         .parse::<f64>()
@@ -127,11 +126,11 @@ pub fn parse_double(stream: &mut TcpStream) -> Result<MyFloat, ParseError> {
 }
 
 //TODO: create a custom struct to represent a big number
-pub fn parse_big_number(stream: &mut TcpStream) -> Result<String, ParseError> {
+pub fn parse_big_number(stream: &mut dyn Read) -> Result<String, ParseError> {
     parse_simple_string(stream)
 }
 
-pub fn parse_verbatim_string(stream: &mut TcpStream) -> Result<VerbatimString, ParseError> {
+pub fn parse_verbatim_string(stream: &mut dyn Read) -> Result<VerbatimString, ParseError> {
     let binding = parse_simple_string(stream)?;
     let mut raw_str = binding.split(':');
     let enc = raw_str
@@ -149,7 +148,7 @@ pub fn parse_verbatim_string(stream: &mut TcpStream) -> Result<VerbatimString, P
     Ok(VerbatimString { enc, data })
 }
 
-pub fn parse_map(stream: &mut TcpStream) -> Result<BTreeMap<Value, Value>, ParseError> {
+pub fn parse_map(stream: &mut dyn Read) -> Result<BTreeMap<Value, Value>, ParseError> {
     let n = parse_integer(stream)?;
     let mut ret = BTreeMap::new();
     for _ in 0..n {
@@ -160,7 +159,7 @@ pub fn parse_map(stream: &mut TcpStream) -> Result<BTreeMap<Value, Value>, Parse
     Ok(ret)
 }
 
-pub fn parse_set(stream: &mut TcpStream) -> Result<BTreeSet<Value>, ParseError> {
+pub fn parse_set(stream: &mut dyn Read) -> Result<BTreeSet<Value>, ParseError> {
     let n = parse_integer(stream)?;
     let mut ret = BTreeSet::new();
     for _ in 0..n {
