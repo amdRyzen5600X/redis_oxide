@@ -11,9 +11,11 @@ fn prepare_docs() -> Vec<u8> {
     resp.to_bytes()
 }
 
-pub fn handle_command_docs(stream: &mut dyn Write) -> Result<()> {
-    let resp = prepare_docs();
-    stream.write_all(&resp)?;
-    stream.flush()?;
+pub fn handle_command_docs(arg: &str, stream: &mut dyn Write) -> Result<()> {
+    if arg.to_lowercase() == "docs" {
+        let resp = prepare_docs();
+        stream.write_all(&resp)?;
+        stream.flush()?;
+    }
     Ok(())
 }

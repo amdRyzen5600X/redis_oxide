@@ -2,6 +2,6 @@
 
 
 ## TODO
- - [ ] refactor command handling
- - [ ] multithreading connection handling
+ - [x] refactor command handling
+ - [x] multithreading connection handling
  - [ ] implement every command of redis server

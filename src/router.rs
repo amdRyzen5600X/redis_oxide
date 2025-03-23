@@ -9,55 +9,62 @@ use crate::{
     send_error,
 };
 
+macro_rules! handle {
+    //command: "command name", arguments for command
+    {$($data:ident)?, $stream:ident, $arr:ident, $command:ident, $key:tt $(,$arg:tt)*} => {
+        let $key = $arr.next();
+        let Some(crate::Value::BulkString($key)) = $key else {
+            return crate::send_error(
+                $stream,
+                &format!(
+                    "Error, wrong amount of arguments for '{}' command",
+                    stringify!($command)
+                ),
+            );
+        };
+        $(
+        let $arg = $arr.next();
+        let Some($arg) = $arg else {
+            return crate::send_error(
+                $stream,
+                &format!(
+                    "Error, wrong amount of arguments for '{}' command",
+                    stringify!($command)
+                ),
+            );
+        };
+        )*
+        return $command($($data.clone(),)? $key, $($arg.clone(),)* $stream);
+    };
+}
+
 pub fn route(req: Value, stream: &mut dyn Write, data: Data) -> Result<()> {
     match req {
         Value::Array(arr) => {
-            if arr
-                == vec![
-                    Value::BulkString("COMMAND".to_string()),
-                    Value::BulkString("DOCS".to_string()),
-                ]
-            {
-                handle_command_docs(stream)?;
-            } else if arr.starts_with(&[Value::BulkString("get".to_string())]) {
-                if arr.len() != 2 {
-                    send_error(stream, "Error, wrong amount of arguments for 'get' command")?;
+            let mut arr = arr.iter();
+            let command = match arr.next() {
+                Some(command) => command,
+                None => return Ok(()),
+            };
+            match command {
+                Value::BulkString(cmd) if cmd.to_lowercase() == "command" => {
+                    handle! {, stream, arr, handle_command_docs, arg}
                 }
-                let key = arr[1].to_string();
-                get(data.clone(), &key, stream)?;
-            } else if arr.starts_with(&[Value::BulkString("set".to_string())]) {
-                if arr.len() != 3 {
-                    send_error(stream, "Error, wrong amount of arguments for 'set' command")?;
+                Value::BulkString(cmd) if cmd.to_lowercase() == "get" => {
+                    handle! {data, stream, arr, get, key}
                 }
-                let key = arr[1].to_string();
-                let val = arr[2].clone();
-                set(data.clone(), &key, val, stream)?;
-            } else if arr.starts_with(&[Value::BulkString("incr".to_string())]) {
-                if arr.len() != 2 {
-                    send_error(
-                        stream,
-                        "Error, wrong amount of arguments for 'incr' command",
-                    )?;
+                Value::BulkString(cmd) if cmd.to_lowercase() == "set" => {
+                    handle! {data, stream, arr, set, key, val}
                 }
-                let key = arr[1].to_string();
-                incr(data.clone(), &key, stream)?;
-            } else if arr.starts_with(&[Value::BulkString("decr".to_string())]) {
-                if arr.len() != 2 {
-                    send_error(
-                        stream,
-                        "Error, wrong amount of arguments for 'decr' command",
-                    )?;
+                Value::BulkString(cmd) if cmd.to_lowercase() == "incr" => {
+                    handle! {data, stream, arr, incr, key}
                 }
-                let key = arr[1].to_string();
-                decr(data.clone(), &key, stream)?;
-            } else {
-                send_error(stream, "ERR unknown command")?;
+                Value::BulkString(cmd) if cmd.to_lowercase() == "decr" => {
+                    handle! {data, stream, arr, decr, key}
+                }
+                _ => send_error(stream, "ERR unknown command"),
             }
         }
-        _ => {
-            send_error(stream, "ERR unknown command")?;
-        }
+        _ => send_error(stream, "ERR unknown command"),
     }
-
-    Ok(())
 }
