@@ -2,7 +2,6 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     fmt::{Debug, Display},
     io::{Result, Write},
-    net::TcpStream,
     sync::{Arc, Mutex},
 };
 
@@ -234,7 +233,7 @@ impl Ord for MyFloat {
     }
 }
 
-pub fn send_error(stream: &mut TcpStream, msg: &str) -> Result<()> {
+pub fn send_error(stream: &mut dyn Write, msg: &str) -> Result<()> {
     let resp = Value::Error(msg.to_string()).to_bytes();
     stream.write_all(&resp)?;
     stream.flush()?;

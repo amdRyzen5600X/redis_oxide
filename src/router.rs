@@ -1,4 +1,4 @@
-use std::{io::Result, net::TcpStream};
+use std::io::{Result, Write};
 
 use crate::{
     Data, Value,
@@ -9,7 +9,7 @@ use crate::{
     send_error,
 };
 
-pub fn route(req: Value, stream: &mut TcpStream, data: Data) -> Result<()> {
+pub fn route(req: Value, stream: &mut dyn Write, data: Data) -> Result<()> {
     match req {
         Value::Array(arr) => {
             if arr

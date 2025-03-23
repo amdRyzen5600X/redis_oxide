@@ -1,11 +1,8 @@
-use std::{
-    io::{Result, Write},
-    net::TcpStream,
-};
+use std::io::{Result, Write};
 
 use crate::{Data, Value, send_error};
 
-pub fn get(data: Data, key: &str, stream: &mut TcpStream) -> Result<()> {
+pub fn get(data: Data, key: &str, stream: &mut dyn Write) -> Result<()> {
     let lock = data.lock().unwrap();
     let value = lock.get(key);
     if let Some(v) = value {
@@ -17,7 +14,7 @@ pub fn get(data: Data, key: &str, stream: &mut TcpStream) -> Result<()> {
     }
     Ok(())
 }
-pub fn set(data: Data, key: &str, value: Value, stream: &mut TcpStream) -> Result<()> {
+pub fn set(data: Data, key: &str, value: Value, stream: &mut dyn Write) -> Result<()> {
     let mut lock = data.lock().unwrap();
     lock.insert(key.to_string(), value);
     let resp = Value::String("OK".to_string()).to_bytes();
@@ -25,7 +22,7 @@ pub fn set(data: Data, key: &str, value: Value, stream: &mut TcpStream) -> Resul
     stream.flush()?;
     Ok(())
 }
-pub fn incr(data: Data, key: &str, stream: &mut TcpStream) -> Result<()> {
+pub fn incr(data: Data, key: &str, stream: &mut dyn Write) -> Result<()> {
     let mut lock = data.lock().unwrap();
     if let Some(v) = lock.get(key) {
         let v = v.to_string().parse::<i64>();
@@ -46,7 +43,7 @@ pub fn incr(data: Data, key: &str, stream: &mut TcpStream) -> Result<()> {
     Ok(())
 }
 
-pub fn decr(data: Data, key: &str, stream: &mut TcpStream) -> Result<()> {
+pub fn decr(data: Data, key: &str, stream: &mut dyn Write) -> Result<()> {
     let mut lock = data.lock().unwrap();
     let value = lock.get(key);
     if let Some(v) = value {

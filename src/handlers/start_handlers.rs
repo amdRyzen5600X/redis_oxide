@@ -1,4 +1,7 @@
-use std::{fs::File, io::{Result, Write}, net::TcpStream};
+use std::{
+    fs::File,
+    io::{Result, Write},
+};
 
 use crate::parse::parse;
 
@@ -8,7 +11,7 @@ fn prepare_docs() -> Vec<u8> {
     resp.to_bytes()
 }
 
-pub fn handle_command_docs(stream: &mut TcpStream) -> Result<()> {
+pub fn handle_command_docs(stream: &mut dyn Write) -> Result<()> {
     let resp = prepare_docs();
     stream.write_all(&resp)?;
     stream.flush()?;
