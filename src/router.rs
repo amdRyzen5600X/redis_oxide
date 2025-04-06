@@ -3,7 +3,7 @@ use std::io::{Result, Write};
 use crate::{
     Data, Value,
     handlers::{
-        command_handlers::{decr, get, incr, set},
+        command_handlers::{decr, del, get, incr, set},
         start_handlers::handle_command_docs,
     },
     send_error,
@@ -36,6 +36,19 @@ macro_rules! handle {
         )*
         return $command($($data.clone(),)? $key, $($arg.clone(),)* $stream);
     };
+    {$data:ident, $stream:ident, $arr:ident, $command:ident} => {
+                    let mut keys = $arr.map(|v| v.to_string());
+                    if keys.len() == 0 {
+                        return crate::send_error(
+                            $stream,
+                            &format!(
+                                "Error, wrong amount of arguments for '{}' command",
+                                stringify!($command)
+                            ),
+                        );
+                    }
+                    $command($data.clone(), &mut keys, $stream)
+    };
 }
 
 pub fn route(req: Value, stream: &mut dyn Write, data: Data) -> Result<()> {
@@ -61,6 +74,9 @@ pub fn route(req: Value, stream: &mut dyn Write, data: Data) -> Result<()> {
                 }
                 Value::BulkString(cmd) if cmd.to_lowercase() == "decr" => {
                     handle! {data, stream, arr, decr, key}
+                }
+                Value::BulkString(cmd) if cmd.to_lowercase() == "del" => {
+                    handle! {data, stream, arr, del}
                 }
                 _ => send_error(stream, "ERR unknown command"),
             }

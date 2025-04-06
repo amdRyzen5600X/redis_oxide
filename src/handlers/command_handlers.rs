@@ -67,3 +67,18 @@ pub fn decr(data: Data, key: &str, stream: &mut dyn Write) -> Result<()> {
     }
     Ok(())
 }
+
+pub fn del(
+    data: Data,
+    keys: &mut impl Iterator<Item = String>,
+    stream: &mut dyn Write,
+) -> Result<()> {
+    let mut count = 0;
+    let mut lock = data.lock().unwrap();
+    for key in keys {
+        if lock.remove(&key).is_some() {
+            count += 1;
+        }
+    }
+    stream.write_all(&Value::Integer(count).to_bytes())
+}
